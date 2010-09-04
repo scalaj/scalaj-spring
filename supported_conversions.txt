@@ -1,0 +1,28 @@
+
+    Scala Types Referenced:
+
+     Iterator
+     Iterable
+       Set
+         mutable.Set
+       Seq
+         mutable.Seq
+           mutable.Buffer
+       Map
+         mutable.Map
+           mutable.ConcurrentMap
+
+    Java Types Referenced:
+
+     Iterator
+     Iterable
+     Enumeration
+     Collection
+       List
+       Set
+       Map
+         ConcurrentMap
+     Dictionary
+     Properties
+
+relationships shown by indentation

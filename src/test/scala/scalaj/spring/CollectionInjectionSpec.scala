@@ -13,6 +13,11 @@ class CollectionInjectionSpec extends FeatureSpec {
       val seqHolder = context.getBean(classOf[StringSeqHolder])
       assert(seqHolder.seq === Seq("1","2","3"))
     }
+    scenario("constructor-injection with a List<Int>") {
+      val context = new ClassPathXmlApplicationContext("testContext.xml")
+      val seqHolder = context.getBean(classOf[IntSeqHolder])
+      assert(seqHolder.seq === Seq(1,2,3))
+    }
   }
 
 }

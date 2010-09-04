@@ -59,7 +59,6 @@ object TypeWrangler {
     case x => classType(x)
   }
 
-
  def intersect(tps: JType*): Manifest[_] = intersectionType(tps map javaType: _*)
  def javaType(tp: JType): Manifest[_] = tp match {
    case null => Manifest.Null
@@ -89,12 +88,12 @@ object TypeWrangler {
     }
   }
 
-  def typeFromDescriptor(td : TypeDescriptor) =
+  implicit def typeFromDescriptor(td : TypeDescriptor) : JType =
     Option(td.getMethodParameter) map {_.getGenericParameterType} getOrElse (td.getType)
 
   implicit def manifestFromTypeDescriptor(td : TypeDescriptor) = javaType(typeFromDescriptor(td))
 
-  def classFromTypeDescriptor(td : TypeDescriptor) = {
+  def classFromDescriptor(td : TypeDescriptor) = {
     td.getType match {
       case null => classOf[Null]
       case _ => td.getObjectType

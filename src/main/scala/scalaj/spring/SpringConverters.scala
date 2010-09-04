@@ -9,6 +9,11 @@ import org.springframework.core.convert.TypeDescriptor
 import java.util.{concurrent => juc}
 import org.springframework.core.convert.converter.{ConditionalGenericConverter, GenericConverter}
 import reflect.{Manifest, ClassManifest}
+import org.springframework.core.convert.converter.GenericConverter.ConvertiblePair
+import scala.collection.JavaConversions._
+
+import TypeWrangler._
+
 
 /**
  * Oh boy, is this ever embarrassing!
@@ -34,118 +39,45 @@ import reflect.{Manifest, ClassManifest}
  * at runtime to develop cold feet and say "well, actually..."
  */
 class JavaToScalaCollectionConverter extends ConditionalGenericConverter {
-  import GenericConverter.ConvertiblePair
 
-  def resolveGenerics(td : TypeDescriptor) = {
-    import org.springframework.core.GenericTypeResolver
-    if (td.getMethodParameter != null) {
-      val tpe = GenericTypeResolver.getTargetType(td.getMethodParameter)
-      Some(tpe)
-    } else None
-  }
+  import Conversion.funcToConversion
 
-  implicit def classFromTypeDescriptor(td : TypeDescriptor) = {
-    println("converting from " + td)
-    println(resolveGenerics(td))
-    val result = td.getType match {
-      case null => classOf[Null]
-      case _ => td.getObjectType
-    }
-    println("converted to " + result)
-    result
-  }
-
-  class Conversion[-From : ClassManifest, +To : ClassManifest](func : From => To) {
-    private[this] val evFrom = classManifest[From]
-    private[this] val evTo = classManifest[To]
-
-    def validFor(srcType: Class[_], targetType: Class[_]) = {
-      ClassManifest.fromClass(srcType) <:< evFrom && ClassManifest.fromClass(targetType) <:< evTo
-    }
-
-    def apply(src : Object) : Object = func(src.asInstanceOf[From]).asInstanceOf[Object]
-
-    def toConvertiblePair : ConvertiblePair = evFrom match {
-      case Manifest.Null => new ConvertiblePair(classOf[Object], evTo.erasure)
-      case _ =>  new ConvertiblePair(evFrom.erasure, evTo.erasure)
-    }
-  }
-
-  object Conversion {
-    def apply[F : ClassManifest, T : ClassManifest](func : Function1[F,T]) = new Conversion(func)
-  }
-
-//  object ImplicitConversion {
-//    def apply[F <% T : ClassManifest, T : ClassManifest] = new Conversion(implicitly[F <%< T])
-//  }
-
-  object NullConversion {
-    def apply[T : ClassManifest](generator : => T) = new Conversion((n:Null) => generator _)
-  }
-
-  //def emptyConcurrentMap[A,B] = asConcurrentMap(new juc.ConcurrentHashMap[A,B])
-
-  /*
-   * Scala Types Referenced:
-   *
-   *  Iterator
-   *  Iterable
-   *    Set
-   *      mutable.Set
-   *    Seq
-   *      mutable.Seq
-   *        mutable.Buffer
-   *    Map
-   *      mutable.Map
-   *        mutable.ConcurrentMap
-   *
-   * Java Types Referenced:
-   *
-   *  Iterator
-   *  Iterable
-   *  Enumeration
-   *  Collection
-   *    List
-   *    Set
-   *    Map
-   *      ConcurrentMap
-   *  Dictionary
-   *  Properties
-   *
-   * relationships shown by indentation
-   */
-
-  //def conversion[From[_,_], To[_,_], A, B](from:From[A,B], to:To[A,B]) = from <%< To
+//  def emptyConcurrentMap[A,B] = asConcurrentMap(new juc.ConcurrentHashMap[A,B])
 
   val conversions : Seq[Conversion[_,_]] = Seq(
-//    Conversion(implicitly[ju.Properties => mutable.Map[String, String]]), //asMap
-//    Conversion(asMap(_ : ju.Dictionary[_,_])), //asMap
-//
-//    Conversion(asConcurrentMap(_ : juc.ConcurrentMap[_,_])),
-//    Conversion(asMap(_ : ju.Map[_,_])),
-//
-//    Conversion(asSet(_ : ju.Set[_])),
-//    Conversion(asBuffer(_ : ju.List[_])),
-    Conversion(implicitly[ju.List[_] => Seq[_]])
-//    Conversion(asIterable(_ : ju.Collection[_])),
-//
-//    Conversion(asIterable(_ : jl.Iterable[_])),
-//    Conversion(asIterator(_ : ju.Iterator[_])),
-//    Conversion(asIterator(_ : ju.Enumeration[_])),
-//
-//    NullConversion(emptyConcurrentMap),
-//    NullConversion(mutable.Map.empty),
-//    NullConversion(Map.empty),
-//
-//    NullConversion(mutable.Buffer.empty),
-//    NullConversion(mutable.Seq.empty),
-//    NullConversion(Seq.empty),
-//
-//    NullConversion(mutable.Set.empty),
-//    NullConversion(Set.empty),
-//
-//    NullConversion(Iterable.empty),
-//    NullConversion(Iterator.empty)
+    asMap(_ : ju.Properties), //asMap
+    asMap(_ : ju.Dictionary[_,_]), //asMap
+
+    asConcurrentMap(_ : juc.ConcurrentMap[_,_]),
+    asMap(_ : ju.Map[_,_]),
+
+    asSet(_ : ju.Set[_]),
+    asBuffer(_ : ju.List[_]),
+    asIterable(_ : ju.Collection[_]),
+
+    asIterable(_ : jl.Iterable[_]),
+    asIterator(_ : ju.Iterator[_]),
+    asIterator(_ : ju.Enumeration[_]),
+
+
+//    implicitly[ju.Properties => mutable.Map[String, String]], //asMap
+//    implicitly[ju.List[_] => Seq[_]],
+
+
+//    (_:Null) => emptyConcurrentMap,
+    (_:Null) => mutable.Map.empty,
+    (_:Null) => Map.empty,
+
+    (n:Null) => mutable.Buffer.empty,
+    (n:Null) => mutable.Buffer.empty,
+    (n:Null) => mutable.Seq.empty,
+    (n:Null) => Seq.empty,
+
+    (n:Null) => mutable.Set.empty,
+    (n:Null) => Set.empty,
+
+    (n:Null) => Iterable.empty,
+    (n:Null) => Iterator.empty
   )
 
   def convertibleTypes : Set[ConvertiblePair] = (conversions map (_.toConvertiblePair)).toSet

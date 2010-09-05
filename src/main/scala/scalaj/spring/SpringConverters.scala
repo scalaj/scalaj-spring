@@ -1,17 +1,11 @@
 package scalaj
 package spring
 
-import java.{ lang => jl, util => ju }
-import scala.collection.mutable
-import spring.Implicits._
-
-import org.springframework.core.convert.TypeDescriptor
-import java.util.{concurrent => juc}
-import org.springframework.core.convert.converter.{ConditionalGenericConverter, GenericConverter}
-import reflect.{Manifest, ClassManifest}
-import org.springframework.core.convert.converter.GenericConverter.ConvertiblePair
+import java.{ util => ju }
 import scala.collection.JavaConversions._
-
+import org.springframework.core.convert.TypeDescriptor
+import org.springframework.core.convert.converter.ConditionalGenericConverter
+import org.springframework.core.convert.converter.GenericConverter.ConvertiblePair
 import TypeWrangler._
 
 
@@ -40,58 +34,17 @@ import TypeWrangler._
  */
 class JavaToScalaCollectionConverter extends ConditionalGenericConverter {
 
-  import Conversion.funcToConversion
+  val conversions = Conversions.allToScala
 
-//  def emptyConcurrentMap[A,B] = asConcurrentMap(new juc.ConcurrentHashMap[A,B])
-
-  val conversions : Seq[Conversion[_,_]] = Seq(
-    asMap(_ : ju.Properties), //asMap
-    asMap(_ : ju.Dictionary[_,_]), //asMap
-
-    asConcurrentMap(_ : juc.ConcurrentMap[_,_]),
-    asMap(_ : ju.Map[_,_]),
-
-    asSet(_ : ju.Set[_]),
-    asBuffer(_ : ju.List[_]),
-    asIterable(_ : ju.Collection[_]),
-
-    asIterable(_ : jl.Iterable[_]),
-    asIterator(_ : ju.Iterator[_]),
-    asIterator(_ : ju.Enumeration[_]),
-
-
-//    implicitly[ju.Properties => mutable.Map[String, String]], //asMap
-//    implicitly[ju.List[_] => Seq[_]],
-
-
-//    (_:Null) => emptyConcurrentMap,
-    (_:Null) => mutable.Map.empty,
-    (_:Null) => Map.empty,
-
-    (n:Null) => mutable.Buffer.empty,
-    (n:Null) => mutable.Buffer.empty,
-    (n:Null) => mutable.Seq.empty,
-    (n:Null) => Seq.empty,
-
-    (n:Null) => mutable.Set.empty,
-    (n:Null) => Set.empty,
-
-    (n:Null) => Iterable.empty,
-    (n:Null) => Iterator.empty
-  )
-
-  def convertibleTypes : Set[ConvertiblePair] = (conversions map (_.toConvertiblePair)).toSet
+  def convertibleTypes : Set[ConvertiblePair] = conversions.toConvertiblePairSet
   def getConvertibleTypes : ju.Set[ConvertiblePair] = convertibleTypes
 
   def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean =
-    conversions.exists(_.validFor(srcType, targetType))
-
-
-
+    conversions.exists(srcType, targetType)
 
   def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object =
-    conversions find {_.validFor(srcType, targetType)} match {
-      case Some(conversion) => conversion(source)
+    conversions(srcType, targetType) match {
+      case Some(conversion) => conversion.apply(source)
       case None => error("can't do this")
     }
 }

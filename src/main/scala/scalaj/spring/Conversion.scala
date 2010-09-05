@@ -15,17 +15,11 @@ class Conversion[-From : Manifest, +To : Manifest](func : From => To) {
   def apply(src : Object) : Object = func(src.asInstanceOf[From]).asInstanceOf[Object]
 
   def toConvertiblePair : ConvertiblePair = evFrom match {
-    case Manifest.Null => new ConvertiblePair(classOf[Object], evTo.erasure)
+    case Manifest.Null | Manifest.Unit => new ConvertiblePair(classOf[Object], evTo.erasure)
     case _ =>  new ConvertiblePair(evFrom.erasure, evTo.erasure)
   }
 }
 
-/**
- * convert from null to some more specific type.  Typically an empty collection.
- */
-object NullConversion {
-  def apply[T : Manifest](generator : => T) = new Conversion((n:Null) => generator _)
-}
 
 object Conversion {
   def apply[F : Manifest, T : Manifest](func : Function1[F,T]) = new Conversion(func)

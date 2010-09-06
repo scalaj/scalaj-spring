@@ -32,18 +32,27 @@ import TypeWrangler._
  * That way, when it actually comes to the crunch, there's always one last chance
  * at runtime to develop cold feet and say "well, actually..."
  */
-class JavaToScalaCollectionConverter extends ConditionalGenericConverter {
+trait AbstractConverter {
+  def convertibleTypes : Set[ConvertiblePair]
+  def getConvertibleTypes : ju.Set[ConvertiblePair] = convertibleTypes
 
-  val conversions = Conversions.allToScala
+  def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean
+
+  def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object
+
+}
+
+class JavaToScalaCollectionConverter extends ConditionalGenericConverter with AbstractConverter {
+
+  implicit val conversions = Conversions.allToScala
 
   def convertibleTypes : Set[ConvertiblePair] = conversions.toConvertiblePairSet
-  def getConvertibleTypes : ju.Set[ConvertiblePair] = convertibleTypes
 
   def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean =
     conversions.exists(srcType, targetType)
 
   def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object =
-    conversions(srcType, targetType) match {
+    conversions.get(srcType, targetType) match {
       case Some(conversion) => conversion.apply(source)
       case None => error("can't do this")
     }

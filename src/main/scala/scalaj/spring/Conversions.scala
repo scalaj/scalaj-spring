@@ -4,15 +4,13 @@ import java.{ lang => jl, util => ju }
 import java.util.{concurrent => juc}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import org.springframework.core.convert.converter.GenericConverter.ConvertiblePair
-import org.springframework.core.convert.TypeDescriptor
 
-import TypeWrangler._
+import tools.util.StringOps
 
 
 class Conversions(val seq : Conversion[_,_]*) {
-  def exists(src : TypeDescriptor, target : TypeDescriptor) = seq exists {_.validFor(src, target)}
-  def apply(src : TypeDescriptor, target : TypeDescriptor) = seq find {_.validFor(src, target)}
+  def exists(src : Manifest[_], target : Manifest[_]) = seq exists {_.validFor(src, target)}
+  def get(src : Manifest[_], target : Manifest[_]) = seq find {_.validFor(src, target)}
   def toConvertiblePairSet = (seq map (_.toConvertiblePair)).toSet
 
   def ++(other : Conversions) = new Conversions(this.seq ++ other.seq : _*)
@@ -40,25 +38,48 @@ object Conversions {
   )
 
   val scalaPrimitiveWidening = Conversions(
-    byte2short, byte2int, byte2long, byte2float, byte2double,
-    short2int, short2long, short2float, short2double,
-    char2int, char2long, char2float, char2double,
-    int2long, int2float, int2double,
-    long2float, long2double,
-    float2double
+    byte2short _,
+    byte2int _,
+    byte2long _,
+    byte2float _,
+    byte2double _,
+    short2int _,
+    short2long _,
+    short2float _,
+    short2double _,
+    char2int _,
+    char2long _,
+    char2float _,
+    char2double _,
+    int2long _,
+    int2float _,
+    int2double _,
+    long2float _,
+    long2double _,
+    float2double _
   )
 
   val autoboxScalaPrimitives = Conversions(
-    byte2Byte,
-    short2Short,
-    char2Character,
-    int2Integer,
-    long2Long,
-    float2Float,
-    double2Double,
-    boolean2Boolean
+    byte2Byte _,
+    short2Short _,
+    char2Character _,
+    int2Integer _,
+    long2Long _,
+    float2Float _,
+    double2Double _,
+    boolean2Boolean _
   )
 
+  val stringsToPrimitives = Conversions(
+    (s:String) => s.toByte,
+    (s:String) => s.toShort,
+    (s:String) => s.head, //toCharacter
+    (s:String) => s.toInt,
+    (s:String) => s.toLong,
+    (s:String) => s.toFloat,
+    (s:String) => s.toDouble,
+    (s:String) => s.toBoolean
+  )
 
   //  private[this] def emptyConcurrentMap[A,B] = asConcurrentMap(new juc.ConcurrentHashMap[A,B])
 

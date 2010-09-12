@@ -32,28 +32,51 @@ import TypeWrangler._
  * That way, when it actually comes to the crunch, there's always one last chance
  * at runtime to develop cold feet and say "well, actually..."
  */
-trait AbstractConverter {
-  def convertibleTypes : Set[ConvertiblePair]
-  def getConvertibleTypes : ju.Set[ConvertiblePair] = convertibleTypes
-
-  def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean
-
-  def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object
-
-}
-
-class JavaToScalaCollectionConverter extends ConditionalGenericConverter with AbstractConverter {
-
-  implicit val conversions = Conversions.allToScala
+abstract class RuntimeConverter {
+  def conversions : Conversions
 
   def convertibleTypes : Set[ConvertiblePair] = conversions.toConvertiblePairSet
 
-  def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean =
-    conversions.exists(srcType, targetType)
+  def matches(srcType : Manifest[_], targetType : Manifest[_]) : Boolean = {
+    val result = conversions.exists(srcType, targetType)
+    println("matches(%s,%s)=%s".format(srcType, targetType, result))
+    result
+  }
 
-  def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object =
-    conversions.get(srcType, targetType) match {
+  def conversion(srcType: Manifest[_], targetType: Manifest[_]) = conversions.get(srcType, targetType)
+
+  def shallowConvert(source : Object, srcType : Manifest[_], targetType : Manifest[_]) : Object = {
+    println("converting %s from %s to %s".format(source.toString, srcType.toString, targetType.toString))
+    conversion(srcType, targetType) match {
       case Some(conversion) => conversion.apply(source)
       case None => error("can't do this")
     }
+  }
+
+  def convert(source : Object, srcType : Manifest[_], targetType : Manifest[_]) : Object = {
+    if(srcType <:< targetType) source
+    else shallowConvert(source, srcType, targetType) match {
+//      case m : Map =>
+      case t : Traversable[Object] => t.map {x => convert(x, srcType.typeArguments.head, targetType.typeArguments.head)}
+      case x => x
+    }
+  }
+
+}
+
+trait SpringEnabledConverter extends RuntimeConverter with ConditionalGenericConverter {
+  def getConvertibleTypes : ju.Set[ConvertiblePair] = convertibleTypes
+
+  def matches(srcType : TypeDescriptor, targetType : TypeDescriptor) : Boolean =
+    matches(manifestFromTypeDescriptor(srcType), manifestFromTypeDescriptor(targetType))
+
+  def convert(source : Object, srcType : TypeDescriptor, targetType : TypeDescriptor) : Object =
+    convert(source, manifestFromTypeDescriptor(srcType), manifestFromTypeDescriptor(targetType))
+
+}
+
+class JavaToScalaCollectionConverter extends SpringEnabledConverter {
+
+  override val conversions = Conversions.allToScala
+
 }

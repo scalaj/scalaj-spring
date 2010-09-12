@@ -80,16 +80,28 @@ object TypeWrangler {
 
 
 
-  def typeParamsFor(td : TypeDescriptor) : List[JType] = {
-    val targetType = Option(td.getMethodParameter) map { GenericTypeResolver.getTargetType }
-    targetType match {
-      case Some(pt : ParameterizedType) => pt.getActualTypeArguments.toList
-      case _ => Nil
-    }
-  }
+//  def typeParamsFor(td : TypeDescriptor) : List[JType] = {
+//    val targetType = Option(td.getMethodParameter) map { GenericTypeResolver.getTargetType }
+//    targetType match {
+//      case Some(pt : ParameterizedType) => pt.getActualTypeArguments.toList
+//      case _ => Nil
+//    }
+//  }
 
   implicit def typeFromDescriptor(td : TypeDescriptor) : JType =
-    Option(td.getMethodParameter) map {_.getGenericParameterType} getOrElse (td.getType)
+    Option(td.getMethodParameter) map {
+      _.getGenericParameterType
+    } orElse {
+      Option(td.getElementType) map { elemType =>
+        new ParameterizedType{
+          override def getOwnerType : JType = null
+          override def getRawType : JType = td.getType
+          override def getActualTypeArguments : Array[JType] = Array(elemType)
+        }
+      }
+    } getOrElse {
+      td.getType
+    }
 
   implicit def manifestFromTypeDescriptor(td : TypeDescriptor) = javaType(typeFromDescriptor(td))
 

@@ -8,19 +8,20 @@ import scala.collection.mutable
 import tools.util.StringOps
 
 
-class Conversions(val seq : Conversion[_,_]*) {
+class Conversions(val seq : ReifiedFunction[_,_]*) {
   def exists(src : Manifest[_], target : Manifest[_]) = seq exists {_.validFor(src, target)}
   def get(src : Manifest[_], target : Manifest[_]) = seq find {_.validFor(src, target)}
-  def toConvertiblePairSet = (seq map (_.toConvertiblePair)).toSet
+  lazy val toConvertiblePairSet = (seq map (_.toConvertiblePair)).toSet
 
   def ++(other : Conversions) = new Conversions(this.seq ++ other.seq : _*)
 }
 
 
 object Conversions {
-  import Conversion.funcToConversion
+  import ReifiedFunction.reify
+  import scalaj.collection.j2s._
 
-  def apply(seq : Conversion[_,_]*) = new Conversions(seq : _*)
+  def apply(seq : ReifiedFunction[_,_]*) = new Conversions(seq : _*)
 
   val javaToScalaCollections = Conversions(
     asMap(_ : ju.Properties),
@@ -28,9 +29,10 @@ object Conversions {
     asConcurrentMap(_ : juc.ConcurrentMap[_,_]),
     asMap(_ : ju.Map[_,_]),
     asSet(_ : ju.Set[_]),
-    asBuffer(_ : ju.List[_]),
+    //asBuffer(_ : ju.List[_]),
+    (Wrappers.ListWrapper _).asInstanceOf[ju.List[Any] => Seq[Nothing]],
     asIterable(_ : ju.Collection[_]),
-    asIterable(_ : jl.Iterable[_]),
+    asIterable(_ : jl.Iterable[_]).asInstanceOf[jl.Iterable[_] => Iterable[Nothing]],
     asIterator(_ : ju.Iterator[_]),
     asIterator(_ : ju.Enumeration[_])
 //  implicitly[ju.Properties => mutable.Map[String, String]], //asMap
@@ -97,5 +99,5 @@ object Conversions {
     (_:Null) => Iterator.empty
   )
 
-  val allToScala = javaToScalaCollections ++ nullToScalaCollections
+  val allToScala = javaToScalaCollections ++ nullToScalaCollections ++ stringsToPrimitives
 }
